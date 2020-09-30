@@ -4,33 +4,67 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path"
 	"time"
 )
 
 const (
-	FILE_NAME        = "exp.conf"
-	TIME_FORMAT      = "2006-01-02T15:04:05.000Z"
-	KEY              = "testtesttesttest"
-	EXPIRED_DURATION = time.Minute * 2
+	time_format = "2006-01-02T15:04:05.000Z"
 )
 
-func GetFilePath() string {
-	rootPath := GetPath("3STunnel")
-	return path.Join(rootPath, FILE_NAME)
+type AppTrial struct {
+	AppName       string
+	EncryptionKey string
+	Duration      time.Duration
 }
 
-func IsFileExist() bool {
-	filePath := GetFilePath()
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return false
+/*
+NewAppTrial : key size must be 16/24/32bytes
+*/
+func NewAppTrial(appName string, duration time.Duration, key string) *AppTrial {
+	return &AppTrial{
+		AppName:       appName,
+		Duration:      duration,
+		EncryptionKey: key,
 	}
-	return true
 }
 
-func IsExpired(expiredTime time.Time) bool {
-	return time.Now().UTC().After(expiredTime)
+func (appTrial *AppTrial) Start() {
+	go appTrial.checker()
+}
 
+func (appTrial *AppTrial) checker() {
+	if !isFileExist(appTrial.AppName) {
+		appTrial.saveState()
+	}
+
+	filePath := getFileLocation(appTrial.AppName)
+	fileData, err := ReadFromFile(filePath)
+	if err != nil {
+		panic(err)
+	}
+	data := Decrypt(string(fileData), appTrial.EncryptionKey)
+	expiredTime, _ := time.Parse(time_format, data)
+	for {
+		if appTrial.isExpired(expiredTime) {
+			panic("Application is expired")
+		}
+		time.Sleep(time.Second * 2)
+	}
+}
+
+func (appTrial *AppTrial) saveState() {
+	dir := getRootDir()
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		_ = os.Mkdir(dir, os.ModePerm)
+	}
+	expiredTime := time.Now().Add(appTrial.Duration).UTC().Format(time_format)
+	data := Encrypt(expiredTime, appTrial.EncryptionKey)
+	filePath := getFileLocation(appTrial.AppName)
+	WriteToFile(data, filePath)
+}
+
+func (appTrial *AppTrial) isExpired(expiredTime time.Time) bool {
+	return time.Now().UTC().After(expiredTime)
 }
 
 func httpServer() {
@@ -41,37 +75,8 @@ func httpServer() {
 	http.ListenAndServe(":8090", nil)
 }
 
-func saveState() {
-	nowTime := time.Now().Add(EXPIRED_DURATION).UTC().Format(TIME_FORMAT)
-	fmt.Println(nowTime)
-	data := Encrypt(nowTime, KEY)
-	filePath := GetFilePath()
-	fmt.Println(filePath)
-	WriteToFile(data, filePath)
-	fmt.Println("A New File Written")
-}
-
-func expireChecker() {
-	if !IsFileExist() {
-		saveState()
-	}
-	filePath := GetFilePath()
-	fileData, err := ReadFromFile(filePath)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	data := Decrypt(string(fileData), KEY)
-	expiredTime, _ := time.Parse(TIME_FORMAT, data)
-	for {
-		if IsExpired(expiredTime) {
-			panic("Application is expired")
-		}
-		time.Sleep(time.Second * 2)
-	}
-
-}
-
 func main() {
-	go expireChecker()
+	trail := NewAppTrial("3STunnel", time.Minute*2, "_this_is_my_encrypt_key_")
+	trail.Start()
 	httpServer()
 }

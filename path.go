@@ -6,7 +6,11 @@ import (
 	"runtime"
 )
 
-func getLocalPath() string {
+const (
+	file_name = "exp.d.encrpt"
+)
+
+func getRootDir() string {
 	if runtime.GOOS == "windows" {
 		home := os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
 		if home == "" {
@@ -20,11 +24,21 @@ func getLocalPath() string {
 	return os.TempDir()
 }
 
-func GetPath(folder string) string {
-	rootPath := getLocalPath()
+func getPath(folder string) string {
+	rootPath := getRootDir()
 	path := path.Join(rootPath, folder)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		_ = os.Mkdir(path, os.ModePerm)
-	}
 	return path
+}
+
+func getFileLocation(appName string) string {
+	folderPath := getPath(appName)
+	return path.Join(folderPath, file_name)
+}
+
+func isFileExist(appName string) bool {
+	filePath := getFileLocation(appName)
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return false
+	}
+	return true
 }
