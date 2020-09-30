@@ -2,14 +2,17 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path"
 	"time"
 )
 
 const (
-	FILE_NAME   = "exp.conf"
-	TIME_FORMAT = "2006-01-02T15:04:05.000Z"
+	FILE_NAME        = "exp.conf"
+	TIME_FORMAT      = "2006-01-02T15:04:05.000Z"
+	KEY              = "testtesttesttest"
+	EXPIRED_DURATION = time.Minute * 2
 )
 
 func GetFilePath() string {
@@ -25,33 +28,50 @@ func IsFileExist() bool {
 	return true
 }
 
-func IsExpired(startedTime time.Time) bool {
-	whenToExpired := startedTime.Add(time.Second * 300)
-	return whenToExpired.After(time.Now())
+func IsExpired(expiredTime time.Time) bool {
+	return time.Now().UTC().After(expiredTime)
+
+}
+
+func httpServer() {
+	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	fmt.Println("Server is listening 8090")
+	http.ListenAndServe(":8090", nil)
+}
+
+func saveState() {
+	nowTime := time.Now().Add(EXPIRED_DURATION).UTC().Format(TIME_FORMAT)
+	fmt.Println(nowTime)
+	data := Encrypt(nowTime, KEY)
+	filePath := GetFilePath()
+	fmt.Println(filePath)
+	WriteToFile(data, filePath)
+	fmt.Println("A New File Written")
+}
+
+func expireChecker() {
+	if !IsFileExist() {
+		saveState()
+	}
+	filePath := GetFilePath()
+	fileData, err := ReadFromFile(filePath)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	data := Decrypt(string(fileData), KEY)
+	expiredTime, _ := time.Parse(TIME_FORMAT, data)
+	for {
+		if IsExpired(expiredTime) {
+			panic("Application is expired")
+		}
+		time.Sleep(time.Second * 2)
+	}
+
 }
 
 func main() {
-	key := "testtesttesttest"
-	if !IsFileExist() {
-		nowTime := time.Now().Format(TIME_FORMAT)
-		fmt.Println(nowTime)
-		data := Encrypt(nowTime, key)
-		filePath := GetFilePath()
-		fmt.Println(filePath)
-		WriteToFile(data, filePath)
-		fmt.Println("A New File Written")
-	} else {
-		filePath := GetFilePath()
-		fileData, err := ReadFromFile(filePath)
-		if err != nil {
-			fmt.Println(err.Error())
-		}
-		data := Decrypt(string(fileData), key)
-		startedTime, _ := time.Parse(TIME_FORMAT, data)
-		fmt.Println("Time: ", startedTime.String())
-		if IsExpired(startedTime) {
-			panic("Application is expired")
-		}
-		fmt.Println(data)
-	}
+	go expireChecker()
+	httpServer()
 }
