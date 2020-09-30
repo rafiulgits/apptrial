@@ -53,7 +53,7 @@ func (appTrial *AppTrial) checker() {
 }
 
 func (appTrial *AppTrial) saveState() {
-	dir := getRootDir()
+	dir := getPath(appTrial.AppName)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		_ = os.Mkdir(dir, os.ModePerm)
 	}
