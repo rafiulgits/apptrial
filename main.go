@@ -38,7 +38,7 @@ func (appTrial *AppTrial) checker() {
 	}
 
 	filePath := getFileLocation(appTrial.AppName)
-	fileData, err := ReadFromFile(filePath)
+	fileData, err := readFromFile(filePath)
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +60,7 @@ func (appTrial *AppTrial) saveState() {
 	expiredTime := time.Now().Add(appTrial.Duration).UTC().Format(time_format)
 	data := Encrypt(expiredTime, appTrial.EncryptionKey)
 	filePath := getFileLocation(appTrial.AppName)
-	WriteToFile(data, filePath)
+	writeToFile(data, filePath)
 }
 
 func (appTrial *AppTrial) isExpired(expiredTime time.Time) bool {
