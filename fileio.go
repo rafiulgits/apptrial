@@ -1,4 +1,4 @@
-package main
+package apptrial
 
 import (
 	"io/ioutil"

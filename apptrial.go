@@ -1,4 +1,4 @@
-package main
+package apptrial
 
 import (
 	"fmt"
@@ -73,10 +73,4 @@ func httpServer() {
 	})
 	fmt.Println("Server is listening 8090")
 	http.ListenAndServe(":8090", nil)
-}
-
-func main() {
-	trail := NewAppTrial("3STunnel", time.Minute*2, "_this_is_my_encrypt_key_")
-	trail.Start()
-	httpServer()
 }
